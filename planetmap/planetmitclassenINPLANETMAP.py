@@ -3,13 +3,15 @@ import pygame
 import math
 
 pygame.init()
+
+pygame.font.Font('Command-Prompt-12x16.ttf',16)
 screen = pygame.display.set_mode((1600,800))
 pygame.display.set_caption("ChadTech vMoonlanderGI")
 clock = pygame.time.Clock()
 
 class object:
 
-	def __init__(self,xPos,yPos,xCor,yCor,xVel,yVel,angle,rotation,image):
+	def __init__(self,xPos,yPos,xCor,yCor,xVel,yVel,angle,rotation,temp,weight,image):
 		self.xPos=xPos
 		self.yPos=yPos
 		self.xCor=xCor
@@ -18,6 +20,8 @@ class object:
 		self.yVel=yVel
 		self.angle=angle
 		self.rotation=rotation
+		self.temp=temp
+		self.weight=weight
 		self.image=image
 
 		self.image.set_colorkey((0,0,0,255))
@@ -25,7 +29,7 @@ class object:
 	def distanceFromLander(self):
 		return (((lander.xPos-self.xPos)**2)+((lander.yPos-self.yPos)**2))**(0.5)
 
-lander = object(1200,1200,1200,1200,0,0,0,0,pygame.image.load('lander5.png').convert())
+lander = object(1200,1200,65200,65200,0,0,0,0,128,1000,pygame.image.load('lander5.png').convert())
 
 weakThrustPower =0.005
 mainThrustPower =0.035
@@ -33,26 +37,31 @@ weakThrustRotate=0.005
 
 class world:
 
-	def __init__(self,xTile,yTile,background,frame,hud):
+	def __init__(self,xTile,yTile,background,frame,hud,minimap):
 		self.xTile=xTile
 		self.yTile=yTile
 
 		self.background = background
 		self.frame = frame
 		self.hud = hud
+		self.minimap = minimap
 
 		self.hud.set_colorkey((0,0,0,255))
 
 theWorld = world(2,2,
 	pygame.image.load('allthatisthecase.png').convert(),
 	pygame.image.load('quadrants.png').convert(),
-	pygame.image.load('hud3.png').convert()
+	pygame.image.load('hud4.png').convert(),
+	pygame.image.load('minimap.png').convert()
 	)
 
-quadFou= pygame.image.load(str(theWorld.xTile)+'x'+str(theWorld.yTile)+'.png').convert()
-quadThe= pygame.image.load(str(theWorld.xTile-1)+'x'+str(theWorld.yTile)+'.png').convert()
-quadTwo= pygame.image.load(str(theWorld.xTile-1)+'x'+str(theWorld.yTile-1)+'.png').convert()
-quadOne= pygame.image.load(str(theWorld.xTile)+'x'+str(theWorld.yTile-1)+'.png').convert()
+scanlines = pygame.image.load('scanlines.png').convert()
+scanlines.set_colorkey((0,0,0,255))
+
+#quadFou= pygame.image.load(str(theWorld.xTile)+'x'+str(theWorld.yTile)+'.png').convert()
+#quadThe= pygame.image.load(str(theWorld.xTile-1)+'x'+str(theWorld.yTile)+'.png').convert()
+#quadTwo= pygame.image.load(str(theWorld.xTile-1)+'x'+str(theWorld.yTile-1)+'.png').convert()
+#quadOne= pygame.image.load(str(theWorld.xTile)+'x'+str(theWorld.yTile-1)+'.png').convert()
 
 def worldBlit(quadTwo,quadOne,quadThe,quadFou,window):
 	window.blit(quadTwo,[0,0])
@@ -66,10 +75,18 @@ def quadUpdate():
 	global quadTwo
 	global quadOne
 
-	quadFou= pygame.image.load(str(theWorld.xTile)+'x'+str((theWorld.yTile))+'.png').convert()
-	quadThe= pygame.image.load(str((theWorld.xTile-1))+'x'+str((theWorld.yTile))+'.png').convert()
-	quadTwo= pygame.image.load(str((theWorld.xTile-1))+'x'+str((theWorld.yTile-1))+'.png').convert()
-	quadOne= pygame.image.load(str(theWorld.xTile)+'x'+str((theWorld.yTile-1))+'.png').convert()
+	global theWorld
+
+	theWorld.xTile = int(lander.xCor)/800 +1
+	theWorld.yTile = int(lander.yCor)/800 +1
+
+
+	quadFou= pygame.image.load(str(theWorld.yTile)+'x'+str((theWorld.xTile))+'.png').convert()
+	quadThe= pygame.image.load(str((theWorld.yTile-1))+'x'+str((theWorld.xTile))+'.png').convert()
+	quadTwo= pygame.image.load(str((theWorld.yTile-1))+'x'+str((theWorld.xTile-1))+'.png').convert()
+	quadOne= pygame.image.load(str(theWorld.yTile)+'x'+str((theWorld.xTile-1))+'.png').convert()
+
+quadUpdate()
 
 blast_strafe = pygame.image.load('blast_strafe.png').convert()
 blast_yaw = pygame.image.load('blast_yaw.png').convert()
@@ -114,7 +131,7 @@ while rungame:
 				RF=True
 
 			if event.key==pygame.K_f:
-				print 'Velocity in (x,y)', lander.xVel ,lander.yVel, 'ANGLE', lander.angle, '(x,y) coordinates', lander.xCor, lander.yCor
+				print 'Velocity in (x,y)', int(lander.xVel*1000) ,int(lander.yVel*1000), 'ANGLE', lander.angle%360, '(x,y) coordinates', int(lander.xCor), int(lander.yCor)
 			if event.key==pygame.K_SPACE:
 				mainThrust=True
 
@@ -250,6 +267,20 @@ while rungame:
 	screen.blit(pygame.transform.rotate(theWorld.background,-lander.angle),[(800-worldX),400-worldY])
 	screen.blit(lander.image,[731,331])
 	screen.blit(theWorld.hud,[0,0])
+
+	# Minimap
+	screen.blit(theWorld.minimap,[1272,2])
+	screen.set_at((1274+(int(lander.xCor/800)),4+(int(lander.yCor/800))),(255,255,255))
+
+	#Read outs
+	screen.blit(pygame.font.Font('Command-Prompt-12x16.ttf',16).render('> (x,y) Pos  = ('+str(int(theWorld.xTile))+','+str(int(theWorld.yTile))+')',False,(255,255,255)),[1270,333])
+	screen.blit(pygame.font.Font('Command-Prompt-12x16.ttf',16).render('> Velocity   = '+str(int(10*(((lander.yVel**2)+(lander.xVel**2))**(0.5)))),False,(255,255,255)),[1270,349])
+	screen.blit(pygame.font.Font('Command-Prompt-12x16.ttf',16).render('> Ang Vel    = '+str(lander.rotation*10),False,(255,255,255)),[1270,365])
+	screen.blit(pygame.font.Font('Command-Prompt-12x16.ttf',16).render('> Angle      = '+str(int(lander.angle%360)),False,(255,255,255)),[1270,381])
+	screen.blit(pygame.font.Font('Command-Prompt-12x16.ttf',16).render('> Temp       = '+str(lander.temp),False,(255,255,255)),[1270,397])
+
+	#Scan Lines
+	screen.blit(scanlines,[0,0])
 
 	pygame.display.flip()
 	clock.tick(60)
